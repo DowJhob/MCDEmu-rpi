@@ -1,6 +1,9 @@
 #include "cd34w515.h"
+
+#ifdef WRAPPER
 #include "PI_SPI_config.h"
 #include <unistd.h>
+#endif
 
 const uint8_t initT_34W515[] = R_34W515_UNKNOWN_1ST_MSG;
 const uint8_t diskInfoT_34W515[] = R_34W515_DISKINFO_MSG;
@@ -17,30 +20,6 @@ const uint8_t randomDisableT_34W515[] = R_34W515_RANDOM_DISABLE_MSG;
 const uint8_t fastForwardT_34W515[] = R_34W515_FAST_FORWARD_MSG;
 const uint8_t rewindT_34W515[] = R_34W515_REWIND_MSG;
 
-/*WRAPPER*/
-#define pinMode(pin,mode) PI_GPIO_config(pin,mode);
-#define HIGH 1
-#define LOW 0
-#define digitalWriteFast(pin,mode) (mode==HIGH) ? (PI_GPIO_set_n(pin)) : (PI_GPIO_clr_n(pin))
-#define digitalReadFast(pin) PI_GPIO_lev_n(pin)
-/*WRAPPER*/
-
-/*
-const uint8_t sizeofinitT_34W515 = sizeof(initT_34W515) / sizeof(const uint8_t);
-const uint8_t sizeofdiskInfoT_34W515 = sizeof(diskInfoT_34W515) / sizeof(const uint8_t);
-const uint8_t sizeofdiskStructureT_34W515 = sizeof(diskStructureT_34W515) / sizeof(const uint8_t);
-const uint8_t sizeoffolderStructureT_34W515 = sizeof(folderStructureT_34W515) / sizeof(const uint8_t);
-const uint8_t sizeofpreviousTrackT_34W515 = sizeof(previousTrackT_34W515) / sizeof(const uint8_t);
-const uint8_t sizeofejectDiskT_34W515 = sizeof(ejectDiskT_34W515) / sizeof(const uint8_t);
-const uint8_t sizeofrandomEnableT_34W515 = sizeof(randomEnableT_34W515) / sizeof(const uint8_t);
-const uint8_t sizeofrandomDisableT_34W515 = sizeof(randomDisableT_34W515) / sizeof(const uint8_t);
-const uint8_t sizeoffastForwardT_34W515 = sizeof(fastForwardT_34W515) / sizeof(const uint8_t);
-const uint8_t sizeofrewindT_34W515 = sizeof(rewindT_34W515) / sizeof(const uint8_t);
-const uint8_t sizeofnextTrackT_34W515 = sizeof(nextTrackT_34W515) / sizeof(const uint8_t);
-const uint8_t sizeofpauseTrackT_34W515 = sizeof(pauseTrackT_34W515) / sizeof(const uint8_t);
-const uint8_t sizeofstopTrackT_34W515 = sizeof(stopTrackT_34W515) / sizeof(const uint8_t);
-const uint8_t sizeofplayTrackT_34W515 = sizeof(playTrackT_34W515) / sizeof(const uint8_t);
-*/
 
 cmdtx34w515_s tx34w515 = {false};
 cmdrx34w515_s rx34w515 = {false};
@@ -82,7 +61,7 @@ bool MCDEmu_slave_34W515_rx(void)
 
   if(masterFallingEdge)
   {
-    usleep(40);
+    delayMicroseconds(40);
     error = digitalHWSPIWrite(SLAVE_ACK, &receivechar);
     debug("tx 0x%02X: rx: 0x%02X", SLAVE_ACK, receivechar);
     masterFallingEdge = false;
@@ -102,7 +81,7 @@ bool MCDEmu_slave_34W515(void)
   return error;
 }
 
-Msg_s tx34w515Msg[]=
+const Msg_s tx34w515Msg[]=
 {
   //34W515 COMMAND LIST      //MESSAGE TO SEND           //SIZE TO SEND
   {&tx34w515.init ,             initT_34W515,               sizeof(initT_34W515) / sizeof(const uint8_t)},
@@ -144,24 +123,24 @@ bool MCDEmu_master_34W515_tx(void)
         // error check
         if(error == true || receivechar != SLAVE_ACK)
         {
-            usleep(10000);
+          delay(10);
           if(receivechar != SLAVE_ACK)
           debug("tx 0x%02X: rx: 0x%02X", sendchar, receivechar);
           break;
         }
         // no error
-        if(i == 0) ((log_verbose == true) ? (printf(">")) : 0);
+        if(i == 0) ((log_verbose == true) ? (_printf(">")) : 0);
         // last message
         if(i != (ptxMsg->size - 1))
         {
           // 2ms between each byte
-            usleep(2000);
-          ((log_verbose == true) ? (printf("%d:0x%02X ", i, sendchar)) : 0);
+          delay(2);
+          ((log_verbose == true) ? (_printf("%d:0x%02X ", i, sendchar)) : 0);
         }
         else
         {
           *ptxMsg->cmd = false;
-          ((log_verbose == true) ? (printf("%d:0x%02X\n", i, sendchar)) : 0);
+          ((log_verbose == true) ? (_printf("%d:0x%02X\n", i, sendchar)) : 0);
           break;
         }
       }
@@ -189,7 +168,7 @@ bool MCDEmu_master_34W515_rx(void)
   while(receiveenable == true)
   {
     // 2ms between each byte
-      usleep(2000);
+    delay(2);
 
     receivechar = 0;
 
@@ -204,9 +183,9 @@ bool MCDEmu_master_34W515_rx(void)
         receiveenable = false;
         for(receivecnt = 0; receivecnt <= T_34W515_MAX_SIZE_TO_RECEIVE; receivecnt++)
         {
-          if(receivecnt == 0) ((log_verbose == true) ? (printf("<")) : 0);
-          ((log_verbose == true) ? (printf("%d:0x%02X ", receivecnt, receivedchars[receivecnt])) : 0);
-          if(receivecnt == T_34W515_MAX_SIZE_TO_RECEIVE) ((log_verbose == true) ? (printf("\n")) : 0);
+          if(receivecnt == 0) ((log_verbose == true) ? (_printf("<")) : 0);
+          ((log_verbose == true) ? (_printf("%d:0x%02X ", receivecnt, receivedchars[receivecnt])) : 0);
+          if(receivecnt == T_34W515_MAX_SIZE_TO_RECEIVE) ((log_verbose == true) ? (_printf("\n")) : 0);
         }
       }
       else

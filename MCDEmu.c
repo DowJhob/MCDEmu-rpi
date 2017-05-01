@@ -14,24 +14,33 @@
 
   2017 - johnbutol
 */
+
+#include "MCDEmu.h"
+
+/*WRAPPER*/
+#ifdef WRAPPER
 #include <stdio.h>
 #include <ctype.h>
 #include <unistd.h>
 #include "PI_SPI_config.h"
+/*WRAPPER*/
+#else
 
 //For debug purposes
 //#include <Debug.h>
 //#define NDEBUG
-//#include <SoftwareSerial.h>
+#include <SoftwareSerial.h>
 
 // include the SPI library:
-//#include <SPI.h>
+#include <SPI.h>
+#endif
+/*WRAPPER*/
 
 #include "cd34w539.h"
 #include "cd34w515.h"
-#include "MCDEmu-rpi.h"
 
 //OTHER SIGNALS
+#ifdef WRAPPER
 // set pin 6 as the mute:
 #define _MUTE_34W539_PIN 17
 // set pin 7 as the cd detect:
@@ -40,32 +49,35 @@
 #define _MUTE_34W515_PIN 23
 // set pin 9 as the cd detect:
 #define DDCNT_34W515_PIN 24
-
-// set up the speed, mode and endianness of each device
-//SPISettings settingsHWSPI(250000, LSBFIRST, SPI_MODE3);
-
-bool log_verbose = false;
-
-/*WRAPPER*/
-#define WRAPPER
-#ifdef WRAPPER
-#define OUTPUT 1
-#define INPUT 0
-#define pinMode(pin,mode) (mode==OUTPUT) ? (PI_GPIO_config(pin,BCM_GPIO_OUT)) : (PI_GPIO_config(pin,BCM_GPIO_IN))
-#define HIGH 1
-#define LOW 0
-#define digitalWriteFast(pin,mode) (mode==HIGH) ? (PI_GPIO_set_n(pin)) : (PI_GPIO_clr_n(pin))
-#define digitalReadFast(pin) PI_GPIO_lev_n(pin)
 /*WRAPPER*/
 #else
-#define pinMode(pin,mode)
-#define digitalWriteFast(pin,mode)
-#define digitalReadFast(pin) 0
+
+// set pin 6 as the mute:
+#define _MUTE_34W539_PIN 6
+// set pin 7 as the cd detect:
+#define DDCNT_34W539_PIN 7
+// set pin 8 as the mute:
+#define _MUTE_34W515_PIN 8
+// set pin 9 as the cd detect:
+#define DDCNT_34W515_PIN 9
+
+// set up the speed, mode and endianness of each device
+SPISettings settingsHWSPI(250000, LSBFIRST, SPI_MODE3);
 #endif
+/*WRAPPER*/
+
+
+bool log_verbose = true;
+
+/*WRAPPER*/
+#ifdef WRAPPER
 
 void printVersion(void);
 void printHelp(void);
 bool MCDEmu_generic_commands(void);
+
+#endif
+/*WRAPPER*/
 
 /**********************************************
 SETUP
@@ -105,11 +117,15 @@ void setup()
    // set the _MUTE_34W539 as an input:
   pinMode(_MUTE_34W539_PIN, INPUT);
 
+/*WRAPPER*/
+#ifndef WRAPPER
    // initialize SPI:
-  //SPI.begin();
+  SPI.begin();
 
   //for debug purposes
-  //Serial.begin(57600);
+  Serial.begin(57600);
+#endif
+/*WRAPPER*/
 
     //debug spi
 #ifdef DEBUG_515
@@ -132,7 +148,11 @@ void setup()
   digitalWriteFast(DDCNT_34W515_PIN, HIGH);
   digitalWriteFast(_MUTE_34W515_PIN, HIGH);
 
-  //delay(1000);
+/*WRAPPER*/
+#ifndef WRAPPER
+  delay(1000);
+#endif
+/*WRAPPER*/
 
   printVersion();
   printHelp();
@@ -159,7 +179,7 @@ const char compile_date[] = __DATE__ " " __TIME__;
 
 void printVersion(void)
 {
-  printf("MCDEmu - %s\n", compile_date);
+  _printf("%s - %s\n", __FILENAME__, compile_date);
 }
 
 const serialtx_s serialtxcommon[]=
@@ -266,10 +286,10 @@ void printHelp(void)
 
   for(i = 0; i < sizeofserialtabletop; i++)
   {
-    printf("List of available commands for module %s (%c)\n", pserialtabletop->infoMsg, pserialtabletop->cmd);
+    _printf("List of available commands for module %s (%c)\n", pserialtabletop->infoMsg, pserialtabletop->cmd);
     while(1)
     {
-      printf("%c - %s\n", pserialtx->cmd, pserialtx->infoMsg);
+      _printf("%c - %s\n", pserialtx->cmd, pserialtx->infoMsg);
       pserialtx++;
       if(pserialtx->cmd == 0) break;
     }
@@ -296,7 +316,7 @@ void serialEvent(void)
     {
       if(pserialtx->cmd == receivedChar)
       {
-          printf(">%s\n", pserialtx->infoMsg);
+          _printf(">%s\n", pserialtx->infoMsg);
           if(pserialtx->cmdEvent != NULL)
           {
             *pserialtx->cmdEvent = true;
@@ -399,26 +419,26 @@ bool MCDEmu_generic_serial_cmd(void)
       // error check
       if(error == true)
       {
-          usleep(10000);
+        delay(10);
         break;
       }
       else if(receivechar != SLAVE_ACK)
       {
-          usleep(10000);
+        delay(10);
         debug("tx 0x%02X: rx: 0x%02X", sendchar, receivechar);
         break;
       }
       //no error
-      if(i == 0) printf(">");
+      if(i == 0) _printf(">");
       // 2ms between each byte
       if(i != (size - 1))
       {
-        usleep(2000);
-        printf("%d:0x%02X ", i, sendchar);
+        delay(2);
+        _printf("%d:0x%02X ", i, sendchar);
       }
       else
       {
-        printf("%d:0x%02X\n", i, sendchar);
+        _printf("%d:0x%02X\n", i, sendchar);
       }
     }
   }
@@ -426,7 +446,7 @@ bool MCDEmu_generic_serial_cmd(void)
   {
     tx34w539.debug = false;
     log_verbose = !log_verbose;
-    printf("<VERBOSE\t %d\n", log_verbose);
+    _printf("<VERBOSE\t %d\n", log_verbose);
   }
   return error;
 }
@@ -461,8 +481,26 @@ Software SPI Transfer
 #define TIMEOUT_96MHZ_CS (TIMEOUT_72MHZ_CS * 2)
 #define TIMEOUT_96MHZ_CLK (TIMEOUT_72MHZ_CLK * 2)
 
+/*WRAPPER*/
+#ifdef WRAPPER
 #define TIMEOUT_CS TIMEOUT_96MHZ_CS
 #define TIMEOUT_CLK TIMEOUT_96MHZ_CLK
+#else
+#if F_CPU < 48000000
+#define TIMEOUT_CS TIMEOUT_24MHZ_CS
+#define TIMEOUT_CLK TIMEOUT_24MHZ_CLK
+#elif F_CPU < 72000000
+#define TIMEOUT_CS TIMEOUT_48MHZ_CS
+#define TIMEOUT_CLK TIMEOUT_48MHZ_CLK
+#elif F_CPU < 96000000
+#define TIMEOUT_CS TIMEOUT_72MHZ_CS
+#define TIMEOUT_CLK TIMEOUT_72MHZ_CLK
+#else
+#define TIMEOUT_CS TIMEOUT_96MHZ_CS
+#define TIMEOUT_CLK TIMEOUT_96MHZ_CLK
+#endif
+#endif
+/*WRAPPER*/
 
 bool digitalSWSPITransfer(uint8_t sendchar, uint8_t *receivechar)
 {
@@ -509,13 +547,13 @@ bool digitalSWSPITransfer(uint8_t sendchar, uint8_t *receivechar)
     *receivechar |= ((rbit[i]) ? 1 : 0) << i;
   }
 
-  usleep(10);
+  delayMicroseconds(10);
   //reset MOSI pin
   digitalWriteFast(DMTS_34W539_MOSI_PIN, HIGH);
   if(sendchar == MASTER_ACK)
-      usleep(50);
+  delayMicroseconds(50);
   else
-      usleep(890);
+  delayMicroseconds(890);
 
   // take the SS pin high to de-select the chip:
   digitalWriteFast(_MTS_34W539_CS_PIN, HIGH);
@@ -554,9 +592,9 @@ bool digitalHWSPIWrite(uint8_t sendchar, uint8_t *receivechar)
   //SPI.beginTransaction(settingsHWSPI);
   // take the SS pin low to select the chip:
   digitalWriteFast(_STM_34W515_CS_PIN, LOW);
-  usleep(45);
+  delayMicroseconds(45);
   //*receivechar = SPI.transfer(sendchar);
-  usleep(60);
+  delayMicroseconds(60);
   // take the SS pin high to de-select the chip:
   digitalWriteFast(_STM_34W515_CS_PIN, HIGH);
   //SPI.endTransaction();
@@ -564,11 +602,17 @@ bool digitalHWSPIWrite(uint8_t sendchar, uint8_t *receivechar)
   return error;
 }
 
+
+/*WRAPPER*/
+#ifdef WRAPPER
 int main(int argc, char *argv[]) {
 
     setup();
-  while (1) {
+
+        while (1) {
       serialEvent();
     loop();
   }
 }
+#endif
+/*WRAPPER*/

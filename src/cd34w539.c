@@ -1,6 +1,9 @@
 #include "cd34w539.h"
+
+#ifdef WRAPPER
 #include "PI_SPI_config.h"
 #include <unistd.h>
+#endif
 
 const uint8_t initT_34W539[] = R_34W539_UNKNOWN_1ST_MSG;
 const uint8_t diskInfoT_34W539[] = R_34W539_DISKINFO_MSG;
@@ -23,36 +26,6 @@ const uint8_t randomDisableT_34W539[] = R_34W539_RANDOM_DISABLE_MSG;
 const uint8_t fastForwardT_34W539[] = R_34W539_FAST_FORWARD_MSG;
 const uint8_t rewindT_34W539[] = R_34W539_REWIND_MSG;
 
-/*
-const uint8_t sizeofinitT_34W539 = sizeof(initT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofdiskInfoT_34W539 = sizeof(diskInfoT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofdiskStructureT_34W539 = sizeof(diskStructureT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeoffolderStructureT_34W539 = sizeof(folderStructureT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofpreviousTrackT_34W539 = sizeof(previousTrackT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofmetaDirNameT_34W539 = sizeof(metaDirNameT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofejectDiskT_34W539 = sizeof(ejectDiskT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofrandomEnableT_34W539 = sizeof(randomEnableT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofrandomDisableT_34W539 = sizeof(randomDisableT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeoffastForwardT_34W539 = sizeof(fastForwardT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofrewindT_34W539 = sizeof(rewindT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofpreviousDirectoryT_34W539 = sizeof(previousDirectoryT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofnextDirectoryT_34W539 = sizeof(nextDirectoryT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofnextTrackT_34W539 = sizeof(nextTrackT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofpauseTrackT_34W539 = sizeof(pauseTrackT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofstopTrackT_34W539 = sizeof(stopTrackT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofmetaFileNameT_34W539 = sizeof(metaFileNameT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofplayTrackT_34W539 = sizeof(playTrackT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofmetaArtNameT_34W539 = sizeof(metaArtNameT_34W539) / sizeof(const uint8_t);
-const uint8_t sizeofmetaTrackNameT_34W539 = sizeof(metaTrackNameT_34W539) / sizeof(const uint8_t);
-*/
-
-/*WRAPPER*/
-#define pinMode(pin,mode) PI_GPIO_config(pin,mode);
-#define HIGH 1
-#define LOW 0
-#define digitalWriteFast(pin,mode) (mode==HIGH) ? (PI_GPIO_set_n(pin)) : (PI_GPIO_clr_n(pin))
-#define digitalReadFast(pin) PI_GPIO_lev_n(pin)
-/*WRAPPER*/
 
 cmdtx34w539_s tx34w539 = {false};
 
@@ -111,24 +84,24 @@ bool MCDEmu_master_34W539_tx(void)
         // error check
         if(error == true || receivechar != SLAVE_ACK)
         {
-            usleep(10000);
+          delay(10);
           if(receivechar != SLAVE_ACK)
           debug("tx 0x%02X: rx: 0x%02X", sendchar, receivechar);
           break;
         }
         // no error
-        if(i == 0) ((log_verbose == true) ? (printf(">")) : 0);
+        if(i == 0) ((log_verbose == true) ? (_printf(">")) : 0);
         // last message
         if(i != (ptxMsg->size - 1))
         {
           // 2ms between each byte
-            usleep(2000);
-          ((log_verbose == true) ? (printf("%d:0x%02X ", i, sendchar)) : 0);
+          delay(2);
+          ((log_verbose == true) ? (_printf("%d:0x%02X ", i, sendchar)) : 0);
         }
         else
         {
           *ptxMsg->cmd = false;
-          ((log_verbose == true) ? (printf("%d:0x%02X\n", i, sendchar)) : 0);
+          ((log_verbose == true) ? (_printf("%d:0x%02X\n", i, sendchar)) : 0);
           break;
         }
       }
@@ -258,7 +231,7 @@ bool MCDEmu_master_34W539_rx(void)
   while(receiveenable == true)
   {
     // 2ms between each byte
-      usleep(2000);
+    delay(2);
 
     receivechar = 0;
 
@@ -307,13 +280,13 @@ bool MCDEmu_master_34W539_rx(void)
 
           if(receivecnt >= T_34W539_METADATA_BYTE_9_CHAR_0)
           {
-            if(receivecnt == T_34W539_METADATA_BYTE_9_CHAR_0) printf("<");
-            printf("%c", receivedchars[receivecnt]);
-            if(receivecnt == receivesize) printf("\n");
+            if(receivecnt == T_34W539_METADATA_BYTE_9_CHAR_0) _printf("<");
+            _printf("%c", receivedchars[receivecnt]);
+            if(receivecnt == receivesize) _printf("\n");
           }
           if(receivesize == T_34W539_SIZE_METADATA_NOK - 1)
           {
-            printf("<NO METADATA\n");
+            _printf("<NO METADATA\n");
           }
           break;
         }
@@ -344,9 +317,9 @@ bool MCDEmu_master_34W539_rx(void)
         receiveenable = false;
         for(receivecnt = 0; receivecnt <= receivesize; receivecnt++)
         {
-          if(receivecnt == 0) ((log_verbose == true) ? (printf("<")) : 0);
-          ((log_verbose == true) ? (printf("%d:0x%02X ", receivecnt, receivedchars[receivecnt])) : 0);
-          if(receivecnt == receivesize) ((log_verbose == true) ? (printf("\n")) : 0);
+          if(receivecnt == 0) ((log_verbose == true) ? (_printf("<")) : 0);
+          ((log_verbose == true) ? (_printf("%d:0x%02X ", receivecnt, receivedchars[receivecnt])) : 0);
+          if(receivecnt == receivesize) ((log_verbose == true) ? (_printf("\n")) : 0);
         }
         error = MCDEmu_master_34W539_status_update(receivedchars);
       }
